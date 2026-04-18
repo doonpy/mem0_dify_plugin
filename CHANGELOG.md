@@ -4,6 +4,49 @@
 
 ---
 
+## Version 0.2.12 (2026-04-16)
+
+### ✨ Enhancements
+- **Dynamic extraction tool parameters**:
+  - Switched all `extract_long_term_memory` tool inputs to `form: llm` so Dify workflows can bind system variables and upstream node outputs more consistently
+- **Bundled Cohere SDK support**:
+  - Added `cohere>=6.1.0` to runtime dependencies so Cohere reranker setups work without extra manual installation
+
+### 🛠️ Reliability & Compatibility
+- **Older Dify editor compatibility**:
+  - Reduced schema differences between extraction and other memory tools, improving variable-binding behavior on older Dify releases that handle `form: form` less reliably
+
+### 🔧 Configuration / Defaults
+- **Documentation refresh for reranker setup**:
+  - Updated README and CONFIG guidance to clarify that cloud rerankers may require provider-specific SDKs, with Cohere documented explicitly
+
+---
+
+## Version 0.2.11 (2026-04-14)
+
+### ✨ Enhancements
+- **AsyncMemory initialization compatibility**:
+  - Added a compatibility resolver around `AsyncMemory.from_config()` so the async client now supports both coroutine-returning and direct-instance mem0 implementations
+- **Supported mem0 version range**:
+  - Relaxed the plugin dependency declaration from a fixed pin to `mem0ai>=1.0.2,<=1.0.11`
+  - Kept the current lockfile aligned on `1.0.2` while documenting the validated support range for future upgrades
+
+### 🐛 Fixes
+- **Async credential validation regression**:
+  - Prevented `object AsyncMemory can't be used in 'await' expression` during `async_mode=true` provider credential validation on newer mem0 releases
+  - Preserved the existing provider validation flow (`get_async_client(...).search(...)`) so runtime behavior stays unchanged outside initialization compatibility
+
+### ✅ Tests
+- Added unit coverage for:
+  - async `AsyncMemory.from_config()` compatibility
+  - sync `AsyncMemory.from_config()` compatibility
+  - async provider credential validation routing
+
+### 📚 Docs
+- Updated release docs, configuration notes, privacy metadata, and submission template for v0.2.11
+
+---
+
 ## Version 0.2.10 (2026-03-23)
 
 ### ✨ Enhancements

@@ -1,4 +1,4 @@
-mem0ai>=1.0.2
+mem0ai>=1.0.2,<=1.0.11
 openai
 azure-identity
 langchain-neo4j
@@ -6,3 +6,4 @@ rank-bm25
 psycopg[binary,pool]  # psycopg3 with connection pool support
 dify_plugin
 tiktoken  # Accurate token counting for conversation processing
+cohere>=6.1.0

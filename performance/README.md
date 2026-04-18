@@ -1,5 +1,7 @@
 # Performance Testing
 
+Last updated: 2026-04-16
+
 This directory contains performance and load testing scripts for the Mem0 Dify plugin.
 
 ## Locust Load Testing
