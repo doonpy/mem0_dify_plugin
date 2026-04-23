@@ -1,0 +1,92 @@
+identity:
+  name: add_long_term_memory
+  author: beersoccer
+  label:
+    en_US: Add Long-Term Memory
+    zh_Hans: 添加长期记忆
+description:
+  human:
+    en_US: Classify a user/assistant turn (semantic/episodic/procedural) and, if valuable, write it as a long-term memory in Mem0. Low-value turns are skipped.
+    zh_Hans: 对用户与助手的单轮对话进行分类（语义/情景/过程），对有价值的内容写入 Mem0 长期记忆；低价值内容会被跳过。
+  llm: Use this tool to intelligently add a single user/assistant exchange as a long-term memory. The tool classifies the content via LLM (semantic, episodic, or procedural) and writes only when it is deemed valuable; otherwise the call is skipped. Safer than add_memory for noisy chatter.
+parameters:
+  - name: user
+    type: string
+    required: true
+    label:
+      en_US: User Message
+      zh_Hans: 用户消息
+    human_description:
+      en_US: The message from the user in the conversation.
+      zh_Hans: 对话中的用户消息。
+    llm_description: The message from the user in the conversation.
+    form: llm
+  - name: assistant
+    type: string
+    required: false
+    label:
+      en_US: Assistant Response
+      zh_Hans: 助手回应
+    human_description:
+      en_US: Optional. The response from the assistant in the conversation. Leave empty if not applicable.
+      zh_Hans: 可选。对话中的助手回应。如果不适用请留空。
+    llm_description: Optional assistant response in the conversation. Only provide if there is a distinct assistant reply to remember. Leave empty otherwise.
+    form: llm
+  - name: user_id
+    type: string
+    required: true
+    label:
+      en_US: User ID
+      zh_Hans: 用户ID
+    human_description:
+      en_US: Required. The unique user identifier.
+      zh_Hans: 必填。用户的唯一标识符。
+    llm_description: Required user identifier.
+    form: llm
+  - name: agent_id
+    type: string
+    required: false
+    label:
+      en_US: Agent ID
+      zh_Hans: 代理ID
+    human_description:
+      en_US: Optional agent identifier. Only provide if you need to associate this memory with a specific agent. Leave empty otherwise.
+      zh_Hans: 可选的代理标识符。仅在需要将此记忆与特定代理关联时提供。否则留空。
+    llm_description: Optional agent identifier. Only provide if associating this memory with a specific agent. Leave empty otherwise.
+    form: llm
+  - name: run_id
+    type: string
+    required: false
+    label:
+      en_US: Run ID
+      zh_Hans: 运行ID
+    human_description:
+      en_US: "Optional unique identifier for tracking the entire memory operation call chain. Recommended to use Dify's workflow_run_id to link multiple memory operations in the same workflow. Note: This parameter is only for tracing the call chain and is NOT used as a condition for memory layering or filtering."
+      zh_Hans: 可选的唯一标识符，用于追踪整个记忆操作调用链。推荐使用 Dify 的 workflow_run_id 来关联同一工作流中的多个记忆操作。注意：此参数仅用于追踪调用链，不作为记忆分层或过滤的条件。
+    llm_description: "Optional unique identifier for tracking the entire memory operation call chain. Recommended to use Dify's workflow_run_id to link multiple memory operations in the same workflow. This parameter is only for tracing and is NOT used as a condition for memory layering or filtering."
+    form: llm
+  - name: metadata
+    type: string
+    required: false
+    label:
+      en_US: Metadata (JSON)
+      zh_Hans: 元数据（JSON）
+    human_description:
+      en_US: Optional metadata as JSON string. Only provide if you need to attach custom metadata to this memory. Leave empty otherwise.
+      zh_Hans: 可选的元数据，JSON 字符串格式。仅在需要为此记忆附加自定义元数据时提供。否则留空。
+    llm_description: Optional metadata as JSON string. Only provide if attaching custom metadata is needed. Leave empty otherwise.
+    form: llm
+  - name: timeout
+    type: number
+    required: false
+    label:
+      en_US: Timeout (seconds)
+      zh_Hans: 超时时间（秒）
+    human_description:
+      en_US: Optional timeout in seconds for the write operation (async mode only). Defaults to 15 if not specified. Only applies when async_mode=true.
+      zh_Hans: 可选，写入操作的超时时间（秒，仅异步模式）。未指定时默认为 15 秒。仅在 async_mode=true 时生效。
+    llm_description: Optional timeout in seconds for the write operation (async mode only). Defaults to 15 if not specified. Only applies when async_mode=true.
+    form: form
+extra:
+  python:
+    source: tools/add_long_term_memory.py
