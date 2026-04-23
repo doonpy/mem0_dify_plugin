@@ -20,7 +20,6 @@ from .prompts import (
     MEMORY_CLASSIFICATION_PROMPT,
     PROCEDURAL_FACT_EXTRACTION_PROMPT,
     SEMANTIC_FACT_EXTRACTION_PROMPT,
-    build_update_memory_prompt,
 )
 
 logger = get_logger(__name__)
@@ -35,6 +34,40 @@ def _subtype_extraction_prompt(subtype: MemorySubtype) -> str:
     if subtype == "episodic":
         return EPISODIC_FACT_EXTRACTION_PROMPT
     return PROCEDURAL_FACT_EXTRACTION_PROMPT
+
+
+def build_single_subtype_sync_client(
+    credentials: dict[str, Any],
+    subtype: MemorySubtype,
+) -> SyncMem0Client:
+    """Create a single SyncMem0Client configured for a specific subtype.
+
+    The client gets its own independent connection pool via
+    ``build_local_mem0_config_without_pool`` and must be closed by the caller
+    when done.
+
+    Args:
+        credentials: Configuration dictionary for Mem0 clients.
+        subtype: Memory subtype ("semantic", "episodic", or "procedural").
+
+    Returns:
+        SyncMem0Client instance configured with that subtype's prompts.
+    """
+    cfg = build_local_mem0_config_without_pool(credentials)
+    cfg["custom_instructions"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
+
+    client = SyncMem0Client(
+        credentials,
+        enable_keepalive=False,
+        config_override=cfg,
+    )
+
+    if not client.memory.config.custom_instructions:
+        raise ValueError(
+            f"Failed to load custom_instructions for {subtype} memory"
+        )
+
+    return client
 
 
 def build_subtype_sync_clients(
@@ -57,27 +90,7 @@ def build_subtype_sync_clients(
     """
     clients: dict[MemorySubtype, SyncMem0Client] = {}
     for subtype in ("semantic", "episodic", "procedural"):
-        cfg = build_local_mem0_config_without_pool(credentials)
-        combined = (
-            f"{_subtype_extraction_prompt(subtype)}\n\n"
-            # "## Memory Update Rules\n"
-            # f"{build_update_memory_prompt(subtype=subtype)}"
-        )
-        cfg["custom_instructions"] = combined  # type: ignore[index]
-
-        client = SyncMem0Client(
-            credentials,
-            enable_keepalive=False,
-            config_override=cfg,
-        )
-
-        if not client.memory.config.custom_instructions:
-            raise ValueError(
-                f"Failed to load custom_instructions for {subtype} memory"
-            )
-
-        clients[subtype] = client
-
+        clients[subtype] = build_single_subtype_sync_client(credentials, subtype)
     return clients
 
 
@@ -459,6 +472,31 @@ def build_memory_metadata(
     return md
 
 
+async def build_single_subtype_async_client(
+    credentials: dict[str, Any],
+    subtype: MemorySubtype,
+) -> AsyncMem0Client:
+    """Create a single AsyncMem0Client configured for a specific subtype.
+
+    The client gets its own independent connection pool via
+    ``build_local_mem0_config_without_pool`` and is eagerly initialised via
+    ``await client.create()``. The caller is responsible for closing it.
+
+    Args:
+        credentials: Configuration dictionary for Mem0 clients.
+        subtype: Memory subtype ("semantic", "episodic", or "procedural").
+
+    Returns:
+        AsyncMem0Client instance configured with that subtype's prompts.
+    """
+    cfg = build_local_mem0_config_without_pool(credentials)
+    cfg["custom_instructions"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
+
+    client = AsyncMem0Client(credentials, enable_keepalive=False, config_override=cfg)
+    await client.create()
+    return client
+
+
 async def build_subtype_async_clients(
     credentials: dict[str, Any],
     base_client: AsyncMem0Client | None = None,
@@ -482,19 +520,7 @@ async def build_subtype_async_clients(
     """
     clients: dict[MemorySubtype, AsyncMem0Client] = {}
     for subtype in ("semantic", "episodic", "procedural"):
-        cfg = build_local_mem0_config_without_pool(credentials)
-        combined = (
-            f"{_subtype_extraction_prompt(subtype)}\n\n"
-            # "## Memory Update Rules\n"
-            # f"{build_update_memory_prompt(subtype=subtype)}"
-        )
-        cfg["custom_instructions"] = combined  # type: ignore[index]
-
-        client = AsyncMem0Client(credentials, enable_keepalive=False, config_override=cfg)
-        await client.create()
-
-        clients[subtype] = client
-
+        clients[subtype] = await build_single_subtype_async_client(credentials, subtype)
     return clients
 
 

@@ -1,7 +1,7 @@
-version: 1.0.0
+version: 1.1.0
 type: plugin
 author: doonpy
-#author: 08b143c8-ba9f-4869-80da-c47bd86df34e dev only
+# author: 08b143c8-ba9f-4869-80da-c47bd86df34e
 name: mem0ai
 label:
     en_US: mem0ai

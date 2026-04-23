@@ -1,15 +1,15 @@
 identity:
-    author: doonpy
-    name: mem0ai
-    label:
-        en_US: mem0ai
-        zh_Hans: mem0ai
-    description:
-        en_US: mem0ai plugin, self-hosted mode, async_mode enabled by default.
-        zh_Hans: mem0ai 插件，自托管模式，async_mode 默认开启。
-    icon: mem0_plugin.png
-    tags:
-        - utilities
+  author: doonpy
+  name: mem0ai
+  label:
+    en_US: mem0ai
+    zh_Hans: mem0ai
+  description:
+    en_US: mem0ai plugin, self-hosted mode, async_mode enabled by default.
+    zh_Hans: mem0ai 插件，自托管模式，async_mode 默认开启。
+  icon: mem0_plugin.png
+  tags:
+    - utilities
 credentials_for_provider:
     async_mode:
         type: boolean
@@ -160,18 +160,19 @@ credentials_for_provider:
             zh_Hans: "提取 Checkpoint 的最大保留天数。超过此 TTL 的 Checkpoint 视为过期，由遗忘记忆工具清理。默认值：90 天。"
 
 tools:
-    - tools/add_memory.yaml
-    - tools/search_memory.yaml
-    - tools/get_all_memories.yaml
-    - tools/get_memory.yaml
-    - tools/update_memory.yaml
-    - tools/delete_memory.yaml
-    - tools/delete_all_memories.yaml
-    - tools/get_memory_history.yaml
-    - tools/extract_long_term_memory.yaml
-    - tools/check_extraction_status.yaml
-    - tools/get_user_checkpoint.yaml
-    - tools/forget_memories.yaml
+  - tools/add_memory.yaml
+  - tools/search_memory.yaml
+  - tools/get_all_memories.yaml
+  - tools/get_memory.yaml
+  - tools/update_memory.yaml
+  - tools/delete_memory.yaml
+  - tools/delete_all_memories.yaml
+  - tools/get_memory_history.yaml
+  - tools/extract_long_term_memory.yaml
+  - tools/check_extraction_status.yaml
+  - tools/get_user_checkpoint.yaml
+  - tools/forget_memories.yaml
+  - tools/add_long_term_memory.yaml
 extra:
     python:
         source: provider/mem0ai.py

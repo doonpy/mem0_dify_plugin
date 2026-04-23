@@ -1,12 +1,13 @@
 """Prompt templates for Dify history -> Mem0 long-term memory extraction.
 
-Mem0 local mode behavior notes (SPEC.md):
-- For infer-based extraction, Mem0 v2 uses a single config-level prompt:
-  - custom_instructions (combines extraction guidance and update rules)
+Mem0 local mode behavior notes:
+- For infer-based extraction, Mem0 uses a single config-level ``custom_instructions``
+  string (the legacy ``custom_fact_extraction_prompt`` / ``custom_update_memory_prompt``
+  keys were removed in mem0 v2).
 - The `prompt=` argument on `add()` is NOT applied to infer extraction.
 
 Therefore, the extraction tool builds 3 separate Mem0 configs (semantic/episodic/procedural),
-each with its own combined custom_instructions string.
+each with its own extraction prompt assigned to ``custom_instructions``.
 
 Design principles (aligned with mem0 best practices):
 1. Extract user-related facts from ALL messages (user + assistant)
@@ -18,9 +19,8 @@ Note: For the FACT extraction prompts (semantic/episodic/procedural) the output 
 extraction system prompt — our `custom_instructions` is appended as one section, not
 substituted. So these templates only describe WHAT to extract.
 
-This does NOT apply to `MEMORY_CLASSIFICATION_PROMPT` (a separate LLM call owned by this
-repo) or `build_update_memory_prompt` (passed as Mem0's `custom_update_memory_prompt`, which
-can replace Mem0's default). Those must continue to define their own output schema.
+This does NOT apply to `MEMORY_CLASSIFICATION_PROMPT`, which drives a separate LLM call
+owned by this repo and must continue to define its own output schema.
 """
 
 from __future__ import annotations
@@ -208,200 +208,3 @@ Output format:
 Conversation:
 """
 
-
-def build_update_memory_prompt(*, subtype: str) -> str:
-    """Return a Mem0-compatible update prompt with subtype isolation.
-
-    Based on mem0's DEFAULT_UPDATE_MEMORY_PROMPT with enhancements:
-    1. Subtype isolation (only modify memories of the specified subtype)
-    2. Internal memory filtering (ignore __internal=true)
-    3. Detailed operation examples (ADD/UPDATE/DELETE/NONE)
-    4. Smart deduplication (merge similar facts with most complete information)
-
-    Mem0 expects a JSON object with:
-    {{
-      "memory": [
-        {{"id": "...", "text": "...", "event": "ADD|UPDATE|DELETE|NONE"}}
-      ]
-    }}
-    """
-    return f"""You are a smart memory manager which controls memory.
-You can perform four operations: (1) ADD, (2) UPDATE, (3) DELETE, (4) NONE.
-
-You will be given:
-- Current memory items: Existing memories with IDs and metadata
-- New retrieved facts: Facts extracted from the latest conversation segment
-
-IMPORTANT Filtering Rules:
-- ONLY operate on memory items where metadata.memory_subtype == "{subtype}"
-- IGNORE any memory item where metadata.__internal == true
-- For memory items of other subtypes or internal memories, do not modify them.
-
-CRITICAL ID RULES:
-- The ONLY valid IDs for UPDATE/DELETE/NONE are the IDs shown in the "Current memory" list above.
-- Never invent or guess IDs. If an ID is not in the current list, do NOT use it.
-- If unsure which ID to use, choose event "NONE" instead of guessing.
-
-Compare newly retrieved facts with the existing memory. For each new fact, decide whether to:
-- ADD: Add it to the memory as a new element
-- UPDATE: Update an existing memory element
-- DELETE: Delete an existing memory element
-- NONE: Make no change (if the fact is already present or irrelevant)
-
-Operation Guidelines:
-
-1. **ADD**: If the retrieved facts contain new information not present in the memory of
-   subtype "{subtype}", add it by generating a new ID.
-- Example:
-    Old Memory:
-    [
-        {{
-            "id": "0",
-            "text": "User is a software engineer",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }}
-    ]
-    Retrieved facts: ["Name is John"]
-    New Memory:
-    {{
-        "memory": [
-            {{
-                "id": "0",
-                "text": "User is a software engineer",
-                "event": "NONE"
-            }},
-            {{
-                "id": "1",
-                "text": "Name is John",
-                "event": "ADD"
-            }}
-        ]
-    }}
-
-2. **UPDATE**: If the retrieved facts have more details or changed information, UPDATE it.
-   - Keep the fact with the MOST complete information
-   - Keep same ID and provide "old_memory" field
-   - Example: "Likes cricket" → "Loves to play cricket with friends" = UPDATE
-   - Counter-example: "Likes pizza" vs "Loves pizza" = NONE (same meaning)
-
-- Example:
-    Old Memory:
-    [
-        {{
-            "id": "0",
-            "text": "Likes cheese pizza",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }},
-        {{
-            "id": "1",
-            "text": "User is a software engineer",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }},
-        {{
-            "id": "2",
-            "text": "User likes to play cricket",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }}
-    ]
-    Retrieved facts: ["Loves cheese and chicken pizza",
-                      "Loves to play cricket with friends"]
-    New Memory:
-    {{
-        "memory": [
-            {{
-                "id": "0",
-                "text": "Loves cheese and chicken pizza",
-                "event": "UPDATE",
-                "old_memory": "Likes cheese pizza"
-            }},
-            {{
-                "id": "1",
-                "text": "User is a software engineer",
-                "event": "NONE"
-            }},
-            {{
-                "id": "2",
-                "text": "Loves to play cricket with friends",
-                "event": "UPDATE",
-                "old_memory": "User likes to play cricket"
-            }}
-        ]
-    }}
-
-3. **DELETE**: If the retrieved facts CONTRADICT existing memory, delete it.
-
-- Example:
-    Old Memory:
-    [
-        {{
-            "id": "0",
-            "text": "Name is John",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }},
-        {{
-            "id": "1",
-            "text": "Loves cheese pizza",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }}
-    ]
-    Retrieved facts: ["Dislikes cheese pizza"]
-    New Memory:
-    {{
-        "memory": [
-            {{
-                "id": "0",
-                "text": "Name is John",
-                "event": "NONE"
-            }},
-            {{
-                "id": "1",
-                "text": "Loves cheese pizza",
-                "event": "DELETE"
-            }}
-        ]
-    }}
-
-4. **NONE**: If the retrieved facts are already present without significant new details.
-
-- Example:
-    Old Memory:
-    [
-        {{
-            "id": "0",
-            "text": "Name is John",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }},
-        {{
-            "id": "1",
-            "text": "Loves cheese pizza",
-            "metadata": {{"memory_subtype": "{subtype}"}}
-        }}
-    ]
-    Retrieved facts: ["Name is John"]
-    New Memory:
-    {{
-        "memory": [
-            {{
-                "id": "0",
-                "text": "Name is John",
-                "event": "NONE"
-            }},
-            {{
-                "id": "1",
-                "text": "Loves cheese pizza",
-                "event": "NONE"
-            }}
-        ]
-    }}
-
-Output Format Requirements:
-- Return ONLY valid JSON in the exact format shown above
-- Do not include explanations or comments outside the JSON
-- Include ONLY items that require a change (event is ADD/UPDATE/DELETE)
-- If there are no changes, return {{ "memory": [] }}
-- For UPDATE events, always include "old_memory" field
-- For ADD events, generate a new unique ID (integer string)
-- Memory text must be a single line (no raw newlines, tabs, or control characters)
-- Avoid double quotes in memory text; rephrase if needed to keep valid JSON
-- Return ONLY the JSON object. No markdown, no code fences, no extra text.
-"""
