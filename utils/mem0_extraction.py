@@ -58,8 +58,12 @@ def build_subtype_sync_clients(
     clients: dict[MemorySubtype, SyncMem0Client] = {}
     for subtype in ("semantic", "episodic", "procedural"):
         cfg = build_local_mem0_config_without_pool(credentials)
-        cfg["custom_fact_extraction_prompt"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
-        cfg["custom_update_memory_prompt"] = build_update_memory_prompt(subtype=subtype)  # type: ignore[index]
+        combined = (
+            f"{_subtype_extraction_prompt(subtype)}\n\n"
+            # "## Memory Update Rules\n"
+            # f"{build_update_memory_prompt(subtype=subtype)}"
+        )
+        cfg["custom_instructions"] = combined  # type: ignore[index]
 
         client = SyncMem0Client(
             credentials,
@@ -67,9 +71,9 @@ def build_subtype_sync_clients(
             config_override=cfg,
         )
 
-        if not client.memory.config.custom_fact_extraction_prompt:
+        if not client.memory.config.custom_instructions:
             raise ValueError(
-                f"Failed to load custom_fact_extraction_prompt for {subtype} memory"
+                f"Failed to load custom_instructions for {subtype} memory"
             )
 
         clients[subtype] = client
@@ -479,8 +483,12 @@ async def build_subtype_async_clients(
     clients: dict[MemorySubtype, AsyncMem0Client] = {}
     for subtype in ("semantic", "episodic", "procedural"):
         cfg = build_local_mem0_config_without_pool(credentials)
-        cfg["custom_fact_extraction_prompt"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
-        cfg["custom_update_memory_prompt"] = build_update_memory_prompt(subtype=subtype)  # type: ignore[index]
+        combined = (
+            f"{_subtype_extraction_prompt(subtype)}\n\n"
+            # "## Memory Update Rules\n"
+            # f"{build_update_memory_prompt(subtype=subtype)}"
+        )
+        cfg["custom_instructions"] = combined  # type: ignore[index]
 
         client = AsyncMem0Client(credentials, enable_keepalive=False, config_override=cfg)
         await client.create()

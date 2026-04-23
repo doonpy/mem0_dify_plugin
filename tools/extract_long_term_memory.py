@@ -30,7 +30,7 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from dify_plugin import Tool
 
@@ -66,6 +66,7 @@ from utils.mem0_client import AsyncMem0Client, SyncMem0Client
 from utils.mem0_extraction import (
     AsyncMemoryClassificationManager,
     AsyncMemoryWriter,
+    MemorySubtype,
     SyncMemoryClassificationManager,
     SyncMemoryWriter,
     build_memory_metadata,
@@ -101,7 +102,7 @@ logger = get_logger(__name__)
 
 def _process_single_user_sync(
     base_client: SyncMem0Client,
-    subtype_clients: dict[str, SyncMem0Client],
+    subtype_clients: dict[MemorySubtype, SyncMem0Client],
     user_id: str,
     app_id: str,
     run_id: str,
@@ -416,7 +417,7 @@ def _process_single_user_sync(
 
 async def _process_single_user_async(
     base_client: AsyncMem0Client,
-    subtype_clients: dict[str, AsyncMem0Client],
+    subtype_clients: dict[MemorySubtype, AsyncMem0Client],
     user_id: str,
     app_id: str,
     run_id: str,
@@ -490,8 +491,9 @@ async def _process_single_user_async(
     try:
         # Ensure base client is initialized
         await base_client.create()
+        assert base_client.memory is not None
         base_mem = base_client.memory
-        
+
         # Load checkpoint (async version)
         logger.info("[run:%s] Processing user %s: loading checkpoint", run_id, user_id)
         checkpoint_mgr = AsyncCheckpointManager(base_mem)
@@ -614,6 +616,7 @@ async def _process_single_user_async(
             # STEP 1: Classify conversation (async)
             semantic_client = subtype_clients["semantic"]
             await semantic_client.create()
+            assert semantic_client.memory is not None
             classification_mgr = AsyncMemoryClassificationManager(semantic_client.memory)
             classified_type, should_extract = await classification_mgr.classify(
                 messages=mem0_msgs,
@@ -757,7 +760,7 @@ async def _process_single_user_async(
 
 async def _execute_extraction_async(
     base_client: AsyncMem0Client,
-    subtype_clients: dict[str, AsyncMem0Client],
+    subtype_clients: dict[MemorySubtype, AsyncMem0Client],
     task_id: str,
     run_id: str,
     user_ids: list[str],
@@ -799,8 +802,9 @@ async def _execute_extraction_async(
     try:
         # Ensure base client is initialized
         await base_client.create()
+        assert base_client.memory is not None
         base_mem = base_client.memory
-        
+
         # Create shared resources (thread-safe)
         dify = DifyClient(dify_base_url, dify_api_key, timeout=EXTRACTION_DIFY_TIMEOUT)
         lock_manager = AsyncLockManager(base_mem)
@@ -964,7 +968,7 @@ async def _execute_extraction_async(
 
 def _execute_extraction_sync(
     base_client: SyncMem0Client,
-    subtype_clients: dict[str, SyncMem0Client],
+    subtype_clients: dict[MemorySubtype, SyncMem0Client],
     task_id: str,
     run_id: str,
     user_ids: list[str],
@@ -1376,12 +1380,13 @@ class ExtractLongTermMemoryTool(Tool):
                             ),
                         )
                         await base_client.create()
-                        
+                        assert base_client.memory is not None
+
                         subtype_clients = await build_subtype_async_clients(
                             self.runtime.credentials,
                             base_client=base_client,
                         )
-                        
+
                         task_status_mgr = AsyncTaskStatusManager(base_client.memory)
                         await task_status_mgr.save(task_status=task_status)
                         
@@ -1491,7 +1496,10 @@ class ExtractLongTermMemoryTool(Tool):
                 loop = BackgroundEventLoop.ensure_loop()
                 
                 # Submit coroutine to background loop and track it
-                future = asyncio.run_coroutine_threadsafe(_bg_task_async(), loop)
+                future = cast(
+                    "asyncio.Future[Any]",
+                    asyncio.run_coroutine_threadsafe(_bg_task_async(), loop),
+                )
                 TaskTracker.track_bg_task(
                     future,
                     f"extract_long_term_memory(task_id={task_id}, users={len(user_ids)})",

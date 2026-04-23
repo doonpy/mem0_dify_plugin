@@ -98,10 +98,8 @@ class SyncTaskStatusManager:
         """
         try:
             # Check if task status already exists
-            filters = task_status_filters(task_id=task_status.task_id)
-            result = self.mem.get_all(
-                user_id=TASK_STATUS_USER_ID, limit=1, filters=filters
-            )
+            filters = {**task_status_filters(task_id=task_status.task_id), "user_id": TASK_STATUS_USER_ID}
+            result = self.mem.get_all(top_k=1, filters=filters)
             items = result.get("results", []) if isinstance(result, dict) else []
 
             payload = asdict(task_status)
@@ -159,10 +157,8 @@ class SyncTaskStatusManager:
             (memory_id, task_status): Returns (id, status) if found, (None, None) otherwise
         """
         try:
-            filters = task_status_filters(task_id=task_id)
-            result = self.mem.get_all(
-                user_id=TASK_STATUS_USER_ID, limit=1, filters=filters
-            )
+            filters = {**task_status_filters(task_id=task_id), "user_id": TASK_STATUS_USER_ID}
+            result = self.mem.get_all(top_k=1, filters=filters)
             items = result.get("results", []) if isinstance(result, dict) else []
             if not items or not isinstance(items, list) or not items:
                 return None, None
@@ -326,10 +322,8 @@ class AsyncTaskStatusManager:
         """
         try:
             # Check if task status already exists
-            filters = task_status_filters(task_id=task_status.task_id)
-            result = await self.mem.get_all(
-                user_id=TASK_STATUS_USER_ID, limit=1, filters=filters
-            )
+            filters = {**task_status_filters(task_id=task_status.task_id), "user_id": TASK_STATUS_USER_ID}
+            result = await self.mem.get_all(top_k=1, filters=filters)
             items = result.get("results", []) if isinstance(result, dict) else []
 
             payload = asdict(task_status)
@@ -387,10 +381,8 @@ class AsyncTaskStatusManager:
             (memory_id, task_status): Returns (id, status) if found, (None, None) otherwise
         """
         try:
-            filters = task_status_filters(task_id=task_id)
-            result = await self.mem.get_all(
-                user_id=TASK_STATUS_USER_ID, limit=1, filters=filters
-            )
+            filters = {**task_status_filters(task_id=task_id), "user_id": TASK_STATUS_USER_ID}
+            result = await self.mem.get_all(top_k=1, filters=filters)
             items = result.get("results", []) if isinstance(result, dict) else []
             if not items or not isinstance(items, list) or not items:
                 return None, None

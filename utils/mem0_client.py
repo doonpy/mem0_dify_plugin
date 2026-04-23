@@ -92,6 +92,7 @@ def _patch_llm_compat(llm: Any) -> None:
 
     llm._parse_response = MethodType(_parse_response, llm)
 
+
 if TYPE_CHECKING:
     from collections.abc import Awaitable
 
@@ -139,7 +140,7 @@ def normalize_search_results(
     if not results:
         return normalized
 
-    items = results
+    items: Any = results
     if isinstance(results, dict) and "results" in results:
         items = results["results"]
 
@@ -332,16 +333,17 @@ class SyncMem0Client:
 
     def __del__(self) -> None:
         """Cleanup resources when SyncMem0Client is destroyed."""
-        if hasattr(self, "_keepalive"):
+        if getattr(self, "_keepalive", None) is not None:
             with contextlib.suppress(Exception):
+                assert self._keepalive is not None
                 self._keepalive.stop()
 
     def close(self) -> None:
         """Close and cleanup resources held by SyncMem0Client.
-        
+
         This method explicitly closes critical resources (connection pools, database
         connections) and stops connection keep-alive to prevent resource leaks.
-        
+
         Note: This is primarily used by long-term memory extraction tool which
         creates independent clients for each task execution.
         """
@@ -351,7 +353,7 @@ class SyncMem0Client:
                 self._keepalive.stop()
             except Exception:
                 logger.exception("Error stopping connection keep-alive")
-        
+
         # Close vector store connection pool
         if self.memory is not None:
             try:
@@ -364,7 +366,7 @@ class SyncMem0Client:
                         pool.closeall()
             except Exception:
                 logger.exception("Error closing vector store connection pool")
-            
+
             # Close graph store if present
             try:
                 graph = getattr(self.memory, "graph", None)
@@ -376,7 +378,7 @@ class SyncMem0Client:
                         graph.driver.close()
             except Exception:
                 logger.exception("Error closing graph store")
-            
+
             # Close database connection if present
             try:
                 db = getattr(self.memory, "db", None)
@@ -384,7 +386,7 @@ class SyncMem0Client:
                     db.close()
             except Exception:
                 logger.exception("Error closing database connection")
-        
+
         logger.debug("SyncMem0Client resources closed")
 
     def search(self, payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -421,21 +423,18 @@ class SyncMem0Client:
         # Build kwargs with non-empty args to simplify branching
         kwargs: dict[str, Any] = {}
         if lim is not None:
-            kwargs["limit"] = lim
-        
-        # Always extract user_id/agent_id/run_id from payload (required by mem0)
-        # These are needed even when filters are provided, as mem0's search requires
-        # at least one of these IDs for scoping, and filters are merged with them
+            kwargs["top_k"] = lim
+
+        # v2: entity IDs must be passed inside the filters dict, not as top-level kwargs
+        merged_filters: dict[str, Any] = dict(filters) if isinstance(filters, dict) else {}
         if payload.get("user_id"):
-            kwargs["user_id"] = payload.get("user_id")
+            merged_filters["user_id"] = payload.get("user_id")
         if payload.get("agent_id"):
-            kwargs["agent_id"] = payload.get("agent_id")
+            merged_filters["agent_id"] = payload.get("agent_id")
         if payload.get("run_id"):
-            kwargs["run_id"] = payload.get("run_id")
-        
-        # Add filters if provided (will be merged with user_id/agent_id/run_id by mem0)
-        if isinstance(filters, dict):
-            kwargs["filters"] = filters
+            merged_filters["run_id"] = payload.get("run_id")
+        kwargs["filters"] = merged_filters
+        kwargs["rerank"] = True
 
         try:
             results = self.memory.search(query, **kwargs)
@@ -489,7 +488,7 @@ class SyncMem0Client:
             kwargs["run_id"] = payload.get("run_id")
         if metadata is not None:
             kwargs["metadata"] = metadata
-        
+
         # Explicitly pass infer parameter if provided, default to True
         # This ensures memory extraction happens even if Mem0's default behavior changes
         infer = payload.get("infer", True)
@@ -498,9 +497,7 @@ class SyncMem0Client:
         # Use messages directly if provided; assume upstream has validated inputs
         messages = payload.get("messages")
         if logger.isEnabledFor(logging.DEBUG):
-            metadata_keys = (
-                sorted(metadata.keys()) if isinstance(metadata, dict) else None
-            )
+            metadata_keys = sorted(metadata.keys()) if isinstance(metadata, dict) else None
             logger.debug(
                 "Mem0 add request summary (sync): ids=%s infer=%s metadata_keys=%s messages=%s",
                 _summarize_ids(kwargs),
@@ -545,23 +542,22 @@ class SyncMem0Client:
         # Build kwargs with all provided parameters
         kwargs: dict[str, Any] = {}
 
-        # Add entity IDs if provided
+        # v2: entity IDs must be passed inside the filters dict, not as top-level kwargs
+        filters = params.get("filters")
+        merged_filters: dict[str, Any] = dict(filters) if isinstance(filters, dict) else {}
         if params.get("user_id"):
-            kwargs["user_id"] = params.get("user_id")
+            merged_filters["user_id"] = params.get("user_id")
         if params.get("agent_id"):
-            kwargs["agent_id"] = params.get("agent_id")
+            merged_filters["agent_id"] = params.get("agent_id")
         if params.get("run_id"):
-            kwargs["run_id"] = params.get("run_id")
+            merged_filters["run_id"] = params.get("run_id")
+        kwargs["filters"] = merged_filters
 
         # Add optional parameters
         limit = params.get("limit")
         if limit is not None:
             with contextlib.suppress(TypeError, ValueError):
-                kwargs["limit"] = int(limit)
-
-        filters = params.get("filters")
-        if isinstance(filters, dict):
-            kwargs["filters"] = filters
+                kwargs["top_k"] = int(limit)
 
         # Mem0's get_all always returns {"results": [...]} format
         try:
@@ -589,7 +585,7 @@ class SyncMem0Client:
             logger.exception("Error retrieving memory %s", memory_id)
             raise
         else:
-            return result
+            return result or {}
 
     def update(self, memory_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         """Update a memory by ID.
@@ -726,7 +722,7 @@ class AsyncMem0Client:
             # Deep-copy the cached static config so each AsyncMem0Client instance owns
             # its own independent pool (created lazily in create()).
             self.config = copy.deepcopy(build_local_mem0_config(credentials))
-        self.memory = None
+        self.memory: AsyncMemory | None = None
         # Async lock to protect one-time asynchronous initialization.
         self._create_lock = asyncio.Lock()
 
@@ -835,9 +831,7 @@ class AsyncMem0Client:
                 # exclusively by this client instance and is closed in aclose().
                 from .pgvector_config import attach_pgvector_pool
 
-                if "vector_store" in self.config and isinstance(
-                    self.config["vector_store"], dict
-                ):
+                if "vector_store" in self.config and isinstance(self.config["vector_store"], dict):
                     vs_cfg = self.config["vector_store"].get("config")
                     if isinstance(vs_cfg, dict):
                         attach_pgvector_pool(vs_cfg)
@@ -901,9 +895,7 @@ class AsyncMem0Client:
                     elif hasattr(pool, "closeall"):
                         await loop.run_in_executor(None, pool.closeall)
             except Exception:
-                logger.exception(
-                    "Error closing connection pool (AsyncMemory was not initialized)"
-                )
+                logger.exception("Error closing connection pool (AsyncMemory was not initialized)")
             return
 
         logger.debug("Closing AsyncMemory resources")
@@ -998,19 +990,18 @@ class AsyncMem0Client:
         # Build kwargs with non-empty args to simplify branching
         kwargs: dict[str, Any] = {}
         if lim is not None:
-            kwargs["limit"] = lim
-        
-        # Always extract user_id/agent_id/run_id from payload (required by mem0)
+            kwargs["top_k"] = lim
+
+        # v2: entity IDs must be passed inside the filters dict, not as top-level kwargs
+        merged_filters: dict[str, Any] = dict(filters) if isinstance(filters, dict) else {}
         if payload.get("user_id"):
-            kwargs["user_id"] = payload.get("user_id")
+            merged_filters["user_id"] = payload.get("user_id")
         if payload.get("agent_id"):
-            kwargs["agent_id"] = payload.get("agent_id")
+            merged_filters["agent_id"] = payload.get("agent_id")
         if payload.get("run_id"):
-            kwargs["run_id"] = payload.get("run_id")
-        
-        # Add filters if provided
-        if isinstance(filters, dict):
-            kwargs["filters"] = filters
+            merged_filters["run_id"] = payload.get("run_id")
+        kwargs["filters"] = merged_filters
+        kwargs["rerank"] = True
 
         timeout = self._get_operation_timeout_s(
             timeout_s=timeout_s,
@@ -1018,6 +1009,7 @@ class AsyncMem0Client:
         )
 
         async def _call() -> object:
+            assert self.memory is not None
             return await self.memory.search(query, **kwargs)
 
         results = await self._run_with_semaphore(
@@ -1077,7 +1069,7 @@ class AsyncMem0Client:
             kwargs["run_id"] = payload.get("run_id")
         if metadata is not None:
             kwargs["metadata"] = metadata
-        
+
         # Explicitly pass infer parameter if provided, default to True
         # This ensures memory extraction happens even if Mem0's default behavior changes
         infer = payload.get("infer", True)
@@ -1103,13 +1095,13 @@ class AsyncMem0Client:
             default_s=WRITE_OPERATION_TIMEOUT,
         )
 
-        async def _call() -> object:
-            return await self.memory.add(messages, **kwargs)
+        async def _call() -> dict[str, Any]:
+            assert self.memory is not None
+            result = await self.memory.add(messages, **kwargs)
+            return result if isinstance(result, dict) else {}
 
         if logger.isEnabledFor(logging.DEBUG):
-            metadata_keys = (
-                sorted(metadata.keys()) if isinstance(metadata, dict) else None
-            )
+            metadata_keys = sorted(metadata.keys()) if isinstance(metadata, dict) else None
             logger.debug(
                 "Mem0 add request summary (async): ids=%s infer=%s metadata_keys=%s "
                 "messages=%s timeout_s=%s",
@@ -1181,7 +1173,9 @@ class AsyncMem0Client:
         )
 
         async def _call() -> dict[str, Any]:
-            return await self.memory.get_all(**kwargs)
+            assert self.memory is not None
+            result = await self.memory.get_all(**kwargs)
+            return result if isinstance(result, dict) else {"results": []}
 
         # Mem0's get_all always returns {"results": [...]} format
         result = await self._run_with_semaphore(
@@ -1215,19 +1209,17 @@ class AsyncMem0Client:
         )
 
         async def _call() -> dict[str, Any]:
+            assert self.memory is not None
             try:
-                return await self.memory.get(memory_id)
+                result = await self.memory.get(memory_id)
+                return result if isinstance(result, dict) else {}
             except (AttributeError, ValueError) as e:
                 # Catch AttributeError from mem0 when existing_memory is None
                 # or ValueError when memory not found
                 # Convert to a consistent ValueError
-                if (
-                    "'NoneType' object has no attribute" in str(e)
-                    or "not found" in str(e).lower()
-                ):
+                if "'NoneType' object has no attribute" in str(e) or "not found" in str(e).lower():
                     error_msg = (
-                        f"Memory with ID {memory_id} not found. "
-                        "Please provide a valid 'memory_id'"
+                        f"Memory with ID {memory_id} not found. Please provide a valid 'memory_id'"
                     )
                     raise ValueError(error_msg) from e
                 # Re-raise other AttributeErrors/ValueErrors
@@ -1265,8 +1257,10 @@ class AsyncMem0Client:
         )
 
         async def _call() -> dict[str, Any]:
+            assert self.memory is not None
             try:
-                return await self.memory.update(memory_id, payload.get("text"))
+                result = await self.memory.update(memory_id, payload.get("text"))
+                return result if isinstance(result, dict) else {}
             except (AttributeError, ValueError) as e:
                 # Catch AttributeError from mem0 when existing_memory is None
                 # or ValueError when memory not found
@@ -1314,8 +1308,10 @@ class AsyncMem0Client:
         )
 
         async def _call() -> dict[str, Any]:
+            assert self.memory is not None
             try:
-                return await self.memory.delete(memory_id)
+                result = await self.memory.delete(memory_id)
+                return result if isinstance(result, dict) else {}
             except (AttributeError, ValueError) as e:
                 # Catch AttributeError from mem0 when existing_memory is None
                 # or ValueError when memory not found
@@ -1367,11 +1363,13 @@ class AsyncMem0Client:
         )
 
         async def _call() -> dict[str, Any]:
-            return await self.memory.delete_all(
+            assert self.memory is not None
+            result = await self.memory.delete_all(
                 user_id=params.get("user_id"),
                 agent_id=params.get("agent_id"),
                 run_id=params.get("run_id"),
             )
+            return result if isinstance(result, dict) else {}
 
         return await self._run_with_semaphore(
             "delete_all",
@@ -1403,7 +1401,9 @@ class AsyncMem0Client:
         )
 
         async def _call() -> list[dict[str, Any]]:
-            return await self.memory.history(memory_id)
+            assert self.memory is not None
+            result = await self.memory.history(memory_id)
+            return result if isinstance(result, list) else []
 
         return await self._run_with_semaphore(
             "history",
@@ -1566,9 +1566,7 @@ def _get_config_hash(credentials: dict[str, Any]) -> str:
         return ""
 
 
-def cleanup_async_client(
-    client: AsyncMem0Client | None, context: str = "cleanup"
-) -> None:
+def cleanup_async_client(client: AsyncMem0Client | None, context: str = "cleanup") -> None:
     """Cleanup AsyncMem0Client resources via background event loop.
 
     This helper function provides a unified way to cleanup AsyncMem0Client
@@ -1692,10 +1690,7 @@ def get_sync_client(credentials: dict[str, Any]) -> SyncMem0Client:
     # All reads and writes are protected by lock to ensure thread safety
     with _cache["sync_client_lock"]:
         # If config changed or client doesn't exist, create new instance
-        if (
-            _cache["sync_client"] is None
-            or _cache["sync_client_config_hash"] != config_hash
-        ):
+        if _cache["sync_client"] is None or _cache["sync_client_config_hash"] != config_hash:
             # Cleanup old client before creating new one to prevent resource leaks
             old_client = _cache["sync_client"]
             if old_client is not None:
@@ -1708,9 +1703,7 @@ def get_sync_client(credentials: dict[str, Any]) -> SyncMem0Client:
                         old_client._keepalive.stop()
                         logger.debug("Stopped keepalive for old SyncMem0Client")
                     except Exception:
-                        logger.exception(
-                            "Error stopping keepalive for old SyncMem0Client"
-                        )
+                        logger.exception("Error stopping keepalive for old SyncMem0Client")
                 # Close resources explicitly
                 try:
                     old_client.close()
@@ -1718,7 +1711,7 @@ def get_sync_client(credentials: dict[str, Any]) -> SyncMem0Client:
                     logger.exception(
                         "Error closing old SyncMem0Client, relying on __del__ for cleanup"
                     )
-            
+
             _cache["sync_client"] = SyncMem0Client(credentials)
             _cache["sync_client_config_hash"] = config_hash
         return _cache["sync_client"]
@@ -1745,10 +1738,7 @@ def get_async_client(credentials: dict[str, Any]) -> AsyncMem0Client:
     # All reads and writes are protected by lock to ensure thread safety
     with _cache["async_client_lock"]:
         # If config changed or client doesn't exist, create new instance
-        if (
-            _cache["async_client"] is None
-            or _cache["async_client_config_hash"] != config_hash
-        ):
+        if _cache["async_client"] is None or _cache["async_client_config_hash"] != config_hash:
             # Cleanup old client before creating new one to prevent resource leaks
             old_client = _cache["async_client"]
             if old_client is not None:

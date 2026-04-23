@@ -19,7 +19,7 @@ import ast
 import hashlib
 import json
 import threading
-from typing import Any
+from typing import Any, NoReturn
 
 from .helpers import strip_code_fences
 from .logger import get_logger
@@ -27,8 +27,10 @@ from .pgvector_config import normalize_pgvector_config
 
 logger = get_logger(__name__)
 
+_graph_warning_logged = False
 
-def _raise_config_error(msg: str) -> None:
+
+def _raise_config_error(msg: str) -> NoReturn:
     """Raise a ValueError for configuration errors with logging.
 
     Args:
@@ -297,8 +299,13 @@ def _build_config_dict(
         config["reranker"] = reranker
         logger.debug("Reranker configuration included")
     if graph_store:
-        config["graph_store"] = graph_store
-        logger.debug("Graph store configuration included")
+        global _graph_warning_logged
+        if not _graph_warning_logged:
+            logger.warning(
+                "graph_store credentials present but ignored — "
+                "mem0 v2 replaces graph DB with built-in entity linking"
+            )
+            _graph_warning_logged = True
 
     return config
 

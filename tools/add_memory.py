@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from dify_plugin import Tool
 
@@ -88,7 +88,7 @@ class AddMemoryTool(Tool):
     def _execute_async_add(  # noqa: PLR0913
         self,
         payload: dict[str, Any],
-        timeout: float,
+        timeout: int,
         user_id: str,
         request_id: str,
         messages: list[dict[str, str]],
@@ -123,9 +123,12 @@ class AddMemoryTool(Tool):
             return
 
         loop = client.ensure_bg_loop()
-        future = asyncio.run_coroutine_threadsafe(
-            client.add(payload, timeout_s=timeout),
-            loop,
+        future = cast(
+            "asyncio.Future[Any]",
+            asyncio.run_coroutine_threadsafe(
+                client.add(payload, timeout_s=timeout),
+                loop,
+            ),
         )
         client.track_bg_task(
             future,
