@@ -32,13 +32,14 @@ def _delete_items(
     filters: dict[str, Any],
     agent_id: str | None = None,
 ) -> int:
-    kwargs: dict[str, Any] = {
-        "user_id": user_id,
-        "limit": 100,
-        "filters": filters,
-    }
+    merged_filters: dict[str, Any] = dict(filters)
+    merged_filters["user_id"] = user_id
     if agent_id:
-        kwargs["agent_id"] = agent_id
+        merged_filters["agent_id"] = agent_id
+    kwargs: dict[str, Any] = {
+        "top_k": 100,
+        "filters": merged_filters,
+    }
     items = _extract_results(mem.get_all(**kwargs))
     deleted = 0
     for item in items:

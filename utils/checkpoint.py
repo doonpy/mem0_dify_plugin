@@ -114,6 +114,7 @@ class SyncCheckpointManager:
         )
         conversations = data.get("conversations") or {}
         if isinstance(conversations, dict):
+            assert cp.conversations is not None
             for cid, cpd in conversations.items():
                 if not isinstance(cpd, dict):
                     continue
@@ -125,13 +126,14 @@ class SyncCheckpointManager:
         return mem_id, cp
 
     def _load_items(self, *, user_id: str, app_id: str | None = None) -> list[dict[str, Any]]:
-        kwargs: dict[str, Any] = {
-            "user_id": user_id,
-            "limit": 5,
-            "filters": checkpoint_filters(),
-        }
+        filters: dict[str, Any] = dict(checkpoint_filters())
+        filters["user_id"] = user_id
         if app_id:
-            kwargs["agent_id"] = app_id
+            filters["agent_id"] = app_id
+        kwargs: dict[str, Any] = {
+            "top_k": 5,
+            "filters": filters,
+        }
         result = self.mem.get_all(**kwargs)
         items = result.get("results", []) if isinstance(result, dict) else []
         if isinstance(items, list) and items:
@@ -330,6 +332,7 @@ class AsyncCheckpointManager:
         )
         conversations = data.get("conversations") or {}
         if isinstance(conversations, dict):
+            assert cp.conversations is not None
             for cid, cpd in conversations.items():
                 if not isinstance(cpd, dict):
                     continue
@@ -341,13 +344,14 @@ class AsyncCheckpointManager:
         return mem_id, cp
 
     async def _load_items(self, *, user_id: str, app_id: str | None = None) -> list[dict[str, Any]]:
-        kwargs: dict[str, Any] = {
-            "user_id": user_id,
-            "limit": 5,
-            "filters": checkpoint_filters(),
-        }
+        filters: dict[str, Any] = dict(checkpoint_filters())
+        filters["user_id"] = user_id
         if app_id:
-            kwargs["agent_id"] = app_id
+            filters["agent_id"] = app_id
+        kwargs: dict[str, Any] = {
+            "top_k": 5,
+            "filters": filters,
+        }
         result = await self.mem.get_all(**kwargs)
         items = result.get("results", []) if isinstance(result, dict) else []
         if isinstance(items, list) and items:

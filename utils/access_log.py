@@ -102,13 +102,14 @@ class SyncAccessLogManager:
         return log_id, data
 
     def _load_items(self, *, user_id: str, app_id: str | None = None) -> list[dict[str, Any]]:
-        kwargs: dict[str, Any] = {
-            "user_id": user_id,
-            "limit": 5,
-            "filters": access_log_filters(),
-        }
+        filters: dict[str, Any] = dict(access_log_filters())
+        filters["user_id"] = user_id
         if app_id:
-            kwargs["agent_id"] = app_id
+            filters["agent_id"] = app_id
+        kwargs: dict[str, Any] = {
+            "top_k": 5,
+            "filters": filters,
+        }
         result = self.mem.get_all(**kwargs)
         items = result.get("results", []) if isinstance(result, dict) else []
         if isinstance(items, list) and items:
@@ -221,13 +222,14 @@ class AsyncAccessLogManager:
         return log_id, data
 
     async def _load_items(self, *, user_id: str, app_id: str | None = None) -> list[dict[str, Any]]:
-        kwargs: dict[str, Any] = {
-            "user_id": user_id,
-            "limit": 5,
-            "filters": access_log_filters(),
-        }
+        filters: dict[str, Any] = dict(access_log_filters())
+        filters["user_id"] = user_id
         if app_id:
-            kwargs["agent_id"] = app_id
+            filters["agent_id"] = app_id
+        kwargs: dict[str, Any] = {
+            "top_k": 5,
+            "filters": filters,
+        }
         result = await self.mem.get_all(**kwargs)
         items = result.get("results", []) if isinstance(result, dict) else []
         if isinstance(items, list) and items:

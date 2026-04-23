@@ -70,11 +70,13 @@ async def test_search_with_filters_includes_user_id():
             # Verify results is a list (even if empty)
             assert isinstance(results, list)
             
-            # Verify that search was called with user_id in kwargs
+            # Verify that search was called with user_id inside filters dict (mem0 v2 shape)
             mock_memory.search.assert_called_once()
             call_args = mock_memory.search.call_args
-            assert call_args.kwargs.get("user_id") == "test_user_123"
             assert "filters" in call_args.kwargs
+            assert call_args.kwargs["filters"].get("user_id") == "test_user_123"
+            # Entity IDs must NOT be passed as top-level kwargs in v2
+            assert "user_id" not in call_args.kwargs
             
         finally:
             await client.aclose()
@@ -126,11 +128,13 @@ async def test_search_with_filters_includes_agent_id():
             results = await client.search(payload)
             assert isinstance(results, list)
             
-            # Verify that search was called with agent_id in kwargs
+            # Verify that search was called with agent_id inside filters dict (mem0 v2 shape)
             mock_memory.search.assert_called_once()
             call_args = mock_memory.search.call_args
-            assert call_args.kwargs.get("agent_id") == "test_agent_456"
             assert "filters" in call_args.kwargs
+            assert call_args.kwargs["filters"].get("agent_id") == "test_agent_456"
+            # Entity IDs must NOT be passed as top-level kwargs in v2
+            assert "agent_id" not in call_args.kwargs
             
         finally:
             await client.aclose()
@@ -180,10 +184,13 @@ async def test_search_without_filters_includes_user_id():
             results = await client.search(payload)
             assert isinstance(results, list)
             
-            # Verify that search was called with user_id in kwargs
+            # Verify that search was called with user_id inside filters dict (mem0 v2 shape)
             mock_memory.search.assert_called_once()
             call_args = mock_memory.search.call_args
-            assert call_args.kwargs.get("user_id") == "test_user_789"
+            assert "filters" in call_args.kwargs
+            assert call_args.kwargs["filters"].get("user_id") == "test_user_789"
+            # Entity IDs must NOT be passed as top-level kwargs in v2
+            assert "user_id" not in call_args.kwargs
             
         finally:
             await client.aclose()

@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
+
+if TYPE_CHECKING:
+    from mem0 import AsyncMemory, Memory
 
 from utils.checkpoint import (
     CHECKPOINT_VERSION,
@@ -59,9 +62,11 @@ class FakeMemory:
         filt = kwargs.get("filters")
         out: list[dict[str, Any]] = []
         for item in self._store:
-            md = item.get("metadata") or {}
-            if not isinstance(md, dict):
-                md = {}
+            md = dict(item.get("metadata") or {}) if isinstance(item.get("metadata"), dict) else {}
+            # v2: entity IDs live inside filters; match against stored ids too
+            for k in ("user_id", "agent_id", "run_id"):
+                if item.get(k) is not None:
+                    md.setdefault(k, item.get(k))
             if self._match(md, filt):
                 out.append(item)
         return {"results": out}
@@ -73,7 +78,14 @@ class FakeMemory:
     def add(self, text: str, **kwargs: Any) -> dict[str, Any]:
         md = kwargs.get("metadata") or {}
         new_id = f"cp_{len(self._store)+1}"
-        self._store.append({"id": new_id, "memory": text, "metadata": md})
+        self._store.append({
+            "id": new_id,
+            "memory": text,
+            "metadata": md,
+            "user_id": kwargs.get("user_id"),
+            "agent_id": kwargs.get("agent_id"),
+            "run_id": kwargs.get("run_id"),
+        })
         self.added.append(
             {
                 "id": new_id,
@@ -108,15 +120,16 @@ def test_checkpoint_filters_shape() -> None:
 
 def test_save_checkpoint_add_and_update(monkeypatch: pytest.MonkeyPatch) -> None:
     mem = FakeMemory()
-    mgr = SyncCheckpointManager(mem)
+    mgr = SyncCheckpointManager(cast("Memory", mem))
 
     # no existing
     cp_id, cp = mgr.load(user_id="u1", app_id=None)
     assert cp_id is None
     assert cp is None
     assert mem.get_all_calls
-    assert mem.get_all_calls[0]["user_id"] == "u1"
-    assert "agent_id" not in mem.get_all_calls[0]
+    assert mem.get_all_calls[0]["filters"]["user_id"] == "u1"
+    assert "user_id" not in mem.get_all_calls[0]
+    assert "agent_id" not in mem.get_all_calls[0]["filters"]
 
     # save new
     ok, new_id = mgr.save(
@@ -149,7 +162,7 @@ def test_save_checkpoint_add_and_update(monkeypatch: pytest.MonkeyPatch) -> None
 def test_save_add_before_delete_order() -> None:
     """Verify that save() adds the new checkpoint BEFORE deleting the old one."""
     mem = FakeMemory()
-    mgr = SyncCheckpointManager(mem)
+    mgr = SyncCheckpointManager(cast("Memory", mem))
 
     # Create initial checkpoint
     ok, initial_id = mgr.save(
@@ -191,7 +204,7 @@ def test_save_add_before_delete_order() -> None:
 def test_save_keeps_old_checkpoint_on_add_failure() -> None:
     """If add() fails, old checkpoint should NOT be deleted."""
     mem = FakeMemory()
-    mgr = SyncCheckpointManager(mem)
+    mgr = SyncCheckpointManager(cast("Memory", mem))
 
     # Create initial checkpoint
     ok, initial_id = mgr.save(
@@ -240,7 +253,10 @@ class AsyncFakeMemory:
         filt = kwargs.get("filters")
         out: list[dict[str, Any]] = []
         for item in self._store:
-            md = item.get("metadata") or {}
+            md = dict(item.get("metadata") or {}) if isinstance(item.get("metadata"), dict) else {}
+            for k in ("user_id", "agent_id", "run_id"):
+                if item.get(k) is not None:
+                    md.setdefault(k, item.get(k))
             if self._match(md, filt):
                 out.append(item)
         return {"results": out}
@@ -248,7 +264,14 @@ class AsyncFakeMemory:
     async def add(self, text: str, **kwargs: Any) -> dict[str, Any]:
         md = kwargs.get("metadata") or {}
         new_id = f"cp_{len(self._store)+1}"
-        self._store.append({"id": new_id, "memory": text, "metadata": md})
+        self._store.append({
+            "id": new_id,
+            "memory": text,
+            "metadata": md,
+            "user_id": kwargs.get("user_id"),
+            "agent_id": kwargs.get("agent_id"),
+            "run_id": kwargs.get("run_id"),
+        })
         self.added.append({"id": new_id, "text": text})
         return {"results": [{"id": new_id, "event": "ADD"}]}
 
@@ -294,7 +317,7 @@ def test_async_load_restores_resume_fields() -> None:
 
     async def _run() -> None:
         mem = AsyncFakeMemory()
-        mgr = AsyncCheckpointManager(mem)
+        mgr = AsyncCheckpointManager(cast("AsyncMemory", mem))
 
         cp = UserCheckpoint(
             conversations={
@@ -320,6 +343,7 @@ def test_async_load_restores_resume_fields() -> None:
         assert loaded_cp.resume_conversation_cursor == "conv1"
         assert loaded_cp.resume_run_at == "2026-04-01T12:00:00Z"
         assert loaded_cp.resume_start_time == "2026-03-01T00:00:00Z"
+        assert loaded_cp.conversations is not None
         assert "conv1" in loaded_cp.conversations
         assert loaded_cp.conversations["conv1"].last_processed_message_id == "msg-100"
 
@@ -331,7 +355,7 @@ def test_async_save_add_before_delete() -> None:
 
     async def _run() -> None:
         mem = AsyncFakeMemory()
-        mgr = AsyncCheckpointManager(mem)
+        mgr = AsyncCheckpointManager(cast("AsyncMemory", mem))
 
         ok, initial_id = await mgr.save(
             checkpoint_id=None, user_id="u1", app_id=None, checkpoint=UserCheckpoint()

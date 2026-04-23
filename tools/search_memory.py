@@ -12,8 +12,17 @@ from dify_plugin import Tool
 from utils.access_log import AsyncAccessLogManager, SyncAccessLogManager
 from utils.background_loop import BackgroundEventLoop
 from utils.config_builder import is_async_mode
-from utils.constants import READ_OPERATION_TIMEOUT, SEARCH_DEFAULT_TOP_K
-from utils.helpers import format_recent_timestamp, log_thread_info, parse_timeout
+from utils.constants import (
+    READ_OPERATION_TIMEOUT,
+    SEARCH_DEFAULT_SCORE_THRESHOLD,
+    SEARCH_DEFAULT_TOP_K,
+)
+from utils.helpers import (
+    format_recent_timestamp,
+    log_thread_info,
+    parse_score_threshold,
+    parse_timeout,
+)
 from utils.logger import get_logger
 from utils.mem0_client import get_async_client, get_sync_client
 from utils.memory_forgetting import build_updates, forget_params
@@ -92,6 +101,23 @@ class SearchMemoryTool(Tool):
                 payload["limit"] = int(top_k)
             except (TypeError, ValueError):
                 payload["limit"] = top_k
+
+        # Resolve score threshold: per-request override > provider credential > default.
+        credentials = getattr(self.runtime, "credentials", {}) or {}
+        provider_default = parse_score_threshold(
+            credentials.get("search_score_threshold"),
+            default=SEARCH_DEFAULT_SCORE_THRESHOLD,
+            logger=logger,
+            context="provider search_score_threshold",
+        )
+        threshold = parse_score_threshold(
+            tool_parameters.get("score_threshold"),
+            default=provider_default,
+            logger=logger,
+            context="tool score_threshold",
+        )
+        if threshold is not None:
+            payload["threshold"] = threshold
 
         return (payload, None)
 

@@ -104,6 +104,12 @@ PGVECTOR_MAX_CONNECTIONS: int = 20
 # Default top_k for search
 SEARCH_DEFAULT_TOP_K: int = 5
 
+# Default minimum similarity score for search results.
+# Memories with a score below this threshold are filtered out before being returned.
+# None means no threshold (return all top_k results regardless of score).
+# Scores are normalized to [0.0, 1.0] where higher = more similar.
+SEARCH_DEFAULT_SCORE_THRESHOLD: float | None = None
+
 # Maximum pending background tasks before rejecting new tasks
 # (multiple of MAX_CONCURRENT_MEMORY_OPERATIONS)
 # This prevents task queue from growing indefinitely when operations are slower than request rate

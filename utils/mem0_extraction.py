@@ -20,7 +20,6 @@ from .prompts import (
     MEMORY_CLASSIFICATION_PROMPT,
     PROCEDURAL_FACT_EXTRACTION_PROMPT,
     SEMANTIC_FACT_EXTRACTION_PROMPT,
-    build_update_memory_prompt,
 )
 
 logger = get_logger(__name__)
@@ -55,8 +54,7 @@ def build_single_subtype_sync_client(
         SyncMem0Client instance configured with that subtype's prompts.
     """
     cfg = build_local_mem0_config_without_pool(credentials)
-    cfg["custom_fact_extraction_prompt"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
-    cfg["custom_update_memory_prompt"] = build_update_memory_prompt(subtype=subtype)  # type: ignore[index]
+    cfg["custom_instructions"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
 
     client = SyncMem0Client(
         credentials,
@@ -64,9 +62,9 @@ def build_single_subtype_sync_client(
         config_override=cfg,
     )
 
-    if not client.memory.config.custom_fact_extraction_prompt:
+    if not client.memory.config.custom_instructions:
         raise ValueError(
-            f"Failed to load custom_fact_extraction_prompt for {subtype} memory"
+            f"Failed to load custom_instructions for {subtype} memory"
         )
 
     return client
@@ -492,8 +490,7 @@ async def build_single_subtype_async_client(
         AsyncMem0Client instance configured with that subtype's prompts.
     """
     cfg = build_local_mem0_config_without_pool(credentials)
-    cfg["custom_fact_extraction_prompt"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
-    cfg["custom_update_memory_prompt"] = build_update_memory_prompt(subtype=subtype)  # type: ignore[index]
+    cfg["custom_instructions"] = _subtype_extraction_prompt(subtype)  # type: ignore[index]
 
     client = AsyncMem0Client(credentials, enable_keepalive=False, config_override=cfg)
     await client.create()

@@ -2,9 +2,15 @@
 
 import threading
 
+from typing import TYPE_CHECKING
+
 from .constants import HEARTBEAT_INTERVAL
 from .logger import get_logger
-from .mem0_client import Memory
+
+if TYPE_CHECKING:
+    from mem0 import AsyncMemory
+
+    from .mem0_client import Memory
 
 logger = get_logger(__name__)
 
@@ -16,7 +22,11 @@ class ConnectionKeepAlive:
     requests to keep connections alive.
     """
 
-    def __init__(self, memory: Memory, interval: int = HEARTBEAT_INTERVAL) -> None:
+    def __init__(
+        self,
+        memory: "Memory | AsyncMemory",
+        interval: int | None = HEARTBEAT_INTERVAL,
+    ) -> None:
         """Initialize the connection keep-alive manager.
 
         Args:
@@ -25,7 +35,7 @@ class ConnectionKeepAlive:
 
         """
         self.memory = memory
-        self.interval = interval
+        self.interval = interval if interval is not None else HEARTBEAT_INTERVAL
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._running = False
