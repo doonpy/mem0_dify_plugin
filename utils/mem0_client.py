@@ -202,6 +202,26 @@ def normalize_search_results(
     return normalized
 
 
+def _apply_score_threshold(
+    results: list[dict[str, Any]],
+    threshold: Any,
+) -> list[dict[str, Any]]:
+    """Drop results whose normalized ``score`` is below ``threshold``.
+
+    Returns the input unchanged when ``threshold`` is None/invalid or out of range.
+    ``score`` is the 0-1 similarity produced by ``normalize_search_results``.
+    """
+    if threshold is None:
+        return results
+    try:
+        cutoff = float(threshold)
+    except (TypeError, ValueError):
+        return results
+    if not 0.0 <= cutoff <= 1.0:
+        return results
+    return [r for r in results if float(r.get("score") or 0.0) >= cutoff]
+
+
 def _summarize_ids(kwargs: dict[str, Any]) -> dict[str, str]:
     """Summarize ID scope for logging without leaking content."""
     summary: dict[str, str] = {}
@@ -404,7 +424,8 @@ class SyncMem0Client:
                     * {"key": {"eq"/"ne"/"in"/"nin"/"gt"/"gte"/"lt"/"lte"/"contains"/"icontains"}: ...}
                     * {"key": "*"} (wildcard)
                     * {"AND"/"OR"/"NOT": [filters,...]} (logic ops)
-                - threshold (float, optional): Minimum score (not used in local mode).
+                - threshold (float, optional): Minimum normalized similarity score in
+                  [0.0, 1.0]. Results with a lower normalized score are dropped.
 
         Returns:
             list[dict]: List of memory search results.
@@ -413,6 +434,7 @@ class SyncMem0Client:
         query = payload.get("query", "")
         filters = payload.get("filters")
         limit = payload.get("limit")
+        threshold = payload.get("threshold")
 
         # Normalize limit to int when possible
         try:
@@ -443,7 +465,7 @@ class SyncMem0Client:
             logger.exception("Error during memory search")
             raise
         else:
-            return normalized
+            return _apply_score_threshold(normalized, threshold)
 
     def add(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Create a new memory.
@@ -967,7 +989,8 @@ class AsyncMem0Client:
                     * {"key": {"eq"/"ne"/"in"/"nin"/"gt"/"gte"/"lt"/"lte"/"contains"/"icontains"}: ...}
                     * {"key": "*"} (wildcard)
                     * {"AND"/"OR"/"NOT": [filters,...]} (logic ops)
-                - threshold (float, optional): Minimum score (not used in local mode).
+                - threshold (float, optional): Minimum normalized similarity score in
+                  [0.0, 1.0]. Results with a lower normalized score are dropped.
             timeout_s (int | None, optional): Timeout seconds for this read operation.
                 Timeout covers create() + waiting for semaphore + actual Mem0 operation.
                 If None, defaults to READ_OPERATION_TIMEOUT.
@@ -979,6 +1002,7 @@ class AsyncMem0Client:
         query = payload.get("query", "")
         filters = payload.get("filters")
         limit = payload.get("limit")
+        threshold = payload.get("threshold")
 
         # Normalize limit to int when possible
         lim: int | None
@@ -1018,7 +1042,8 @@ class AsyncMem0Client:
             timeout_s=timeout,
             check_queue=True,  # Read operations check queue
         )
-        return normalize_search_results(results, score_mode=self.score_mode)
+        normalized = normalize_search_results(results, score_mode=self.score_mode)
+        return _apply_score_threshold(normalized, threshold)
 
     async def add(
         self,

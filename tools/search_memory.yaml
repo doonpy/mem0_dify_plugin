@@ -77,6 +77,17 @@ parameters:
       zh_Hans: 可选，返回的最大结果数量。未指定时默认为 5。
     llm_description: Optional maximum number of results to return. Defaults to 5 if not specified.
     form: llm
+  - name: score_threshold
+    type: number
+    required: false
+    label:
+      en_US: Score Threshold
+      zh_Hans: 分数阈值
+    human_description:
+      en_US: Optional minimum similarity score (0.0–1.0). Results below this score are filtered out. Overrides the provider-level default. Leave empty to use the provider default (or no threshold if unset).
+      zh_Hans: 可选的最低相似度分数（0.0–1.0）。分数低于此值的结果将被过滤。会覆盖 Provider 层的默认值。留空则使用 Provider 默认值（未设置时表示不使用阈值）。
+    llm_description: Optional minimum similarity score (0.0–1.0). Results below this score are filtered out. Leave empty to use the provider-configured default.
+    form: llm
   - name: timeout
     type: number
     required: false

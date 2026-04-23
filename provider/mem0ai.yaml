@@ -128,6 +128,16 @@ credentials_for_provider:
               label:
                   en_US: ERROR (Errors Only)
                   zh_Hans: ERROR (仅错误)
+    search_score_threshold:
+        type: text-input
+        required: false
+        default: ""
+        label:
+            en_US: Search Score Threshold
+            zh_Hans: 搜索分数阈值
+        help:
+            en_US: "Minimum similarity score (0.0–1.0) for search results. Memories with a score below this threshold are filtered out. Leave empty to return all top-K results regardless of score. Higher values (e.g. 0.6–0.8) return only highly relevant matches; lower values (e.g. 0.2–0.4) are more permissive."
+            zh_Hans: "搜索结果的最低相似度分数（0.0–1.0）。分数低于此阈值的记忆将被过滤。留空表示不使用阈值，按 top-K 返回全部结果。较高值（如 0.6–0.8）仅返回高度相关的匹配；较低值（如 0.2–0.4）则较为宽松。"
     memory_ttl_days:
         type: text-input
         required: false
