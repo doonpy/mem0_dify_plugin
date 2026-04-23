@@ -84,13 +84,14 @@ def _clean_old_checkpoints(
     Returns the count of checkpoints deleted (or would-delete in dry_run).
     """
     try:
-        kwargs: dict[str, Any] = {
-            "user_id": user_id,
-            "limit": 100,
-            "filters": checkpoint_filters(),
-        }
+        filters: dict[str, Any] = dict(checkpoint_filters())
+        filters["user_id"] = user_id
         if app_id:
-            kwargs["agent_id"] = app_id
+            filters["agent_id"] = app_id
+        kwargs: dict[str, Any] = {
+            "top_k": 100,
+            "filters": filters,
+        }
         raw = mem.get_all(**kwargs)
         items: list[dict[str, Any]] = []
         if isinstance(raw, dict):
@@ -152,19 +153,19 @@ def _clean_expired_locks(
     Returns the count of locks deleted (or would-delete in dry_run).
     """
     try:
-        filters = {
+        filters: dict[str, Any] = {
             "AND": [
                 {"__internal": {"eq": True}},
                 {"internal_type": {"eq": "distributed_lock"}},
             ],
-        }
-        kwargs: dict[str, Any] = {
             "user_id": user_id,
-            "limit": 100,
-            "filters": filters,
         }
         if app_id:
-            kwargs["agent_id"] = app_id
+            filters["agent_id"] = app_id
+        kwargs: dict[str, Any] = {
+            "top_k": 100,
+            "filters": filters,
+        }
         raw = mem.get_all(**kwargs)
         items: list[dict[str, Any]] = []
         if isinstance(raw, dict):
@@ -239,12 +240,13 @@ class ForgetMemoriesTool(Tool):
             mem = client.memory
 
             # 1. Get all non-internal memories for this user (+ app scope)
-            get_all_kwargs: dict[str, Any] = {
-                "user_id": user_id,
-                "limit": _GET_ALL_LIMIT,
-            }
+            get_all_filters: dict[str, Any] = {"user_id": user_id}
             if app_id:
-                get_all_kwargs["agent_id"] = app_id
+                get_all_filters["agent_id"] = app_id
+            get_all_kwargs: dict[str, Any] = {
+                "top_k": _GET_ALL_LIMIT,
+                "filters": get_all_filters,
+            }
             raw_result = mem.get_all(**get_all_kwargs)
             all_memories: list[dict[str, Any]] = []
             if isinstance(raw_result, dict):

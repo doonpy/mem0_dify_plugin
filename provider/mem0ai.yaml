@@ -1,167 +1,177 @@
 identity:
-  author: beersoccer
-  name: mem0ai
-  label:
-    en_US: mem0ai
-    zh_Hans: mem0ai
-  description:
-    en_US: mem0ai plugin, self-hosted mode, async_mode enabled by default.
-    zh_Hans: mem0ai 插件，自托管模式，async_mode 默认开启。
-  icon: mem0_plugin.png
-  tags:
-    - utilities
+    author: doonpy
+    name: mem0ai
+    label:
+        en_US: mem0ai
+        zh_Hans: mem0ai
+    description:
+        en_US: mem0ai plugin, self-hosted mode, async_mode enabled by default.
+        zh_Hans: mem0ai 插件，自托管模式，async_mode 默认开启。
+    icon: mem0_plugin.png
+    tags:
+        - utilities
 credentials_for_provider:
-  async_mode:
-    type: boolean
-    required: false
-    default: true
-    label:
-      en_US: Async Mode
-      zh_Hans: 异步模式
-    help:
-      en_US: "When async mode is enabled, all Mem0 operations run asynchronously and concurrently. Search waits for results; Add does not."
-      zh_Hans: "开启异步模式后，所有Mem0的操作都异步并发执行，Search操作会等待返回结果而Add操作不会。"
-  local_llm_json_secret:
-    type: secret-input
-    required: true
-    label:
-      en_US: LLM Configuration
-      zh_Hans: LLM 配置
-    placeholder:
-      en_US: '{"provider":"azure_openai","config":{"model":"gpt-4","api_key":"..."}}'
-      zh_Hans: '{"provider":"azure_openai","config":{"model":"gpt-4","api_key":"..."}}'
-    help:
-      en_US: "LLM provider configuration. Supported: azure_openai, openai, anthropic, etc. Use this field for new installations."
-      zh_Hans: "LLM 提供商配置。支持：azure_openai、openai、anthropic 等。新安装请使用此字段。"
-  local_embedder_json_secret:
-    type: secret-input
-    required: true
-    label:
-      en_US: Embedder Configuration
-      zh_Hans: 向量模型配置
-    placeholder:
-      en_US: '{"provider":"azure_openai","config":{"model":"text-embedding-ada-002","api_key":"..."}}'
-      zh_Hans: '{"provider":"azure_openai","config":{"model":"text-embedding-ada-002","api_key":"..."}}'
-    help:
-      en_US: "Embedding model configuration. Supported: azure_openai, openai, huggingface, etc. Use this field for new installations."
-      zh_Hans: "向量模型配置。支持：azure_openai、openai、huggingface 等。新安装请使用此字段。"
-  local_vector_db_json_secret:
-    type: secret-input
-    required: true
-    label:
-      en_US: Vector Database Configuration
-      zh_Hans: 向量数据库配置
-    placeholder:
-      en_US: '{"provider":"pgvector","config":{"dbname":"mem0","user":"postgres","password":"...","host":"localhost"}}'
-      zh_Hans: '{"provider":"pgvector","config":{"dbname":"mem0","user":"postgres","password":"...","host":"localhost"}}'
-    help:
-      en_US: "Vector database configuration. Supported: pgvector, milvus, qdrant, etc. Use this field for new installations."
-      zh_Hans: "向量数据库配置。支持：pgvector、milvus、qdrant 等。新安装请使用此字段。"
-  local_graph_db_json_secret:
-    type: secret-input
-    required: false
-    label:
-      en_US: Graph Database Configuration
-      zh_Hans: 图数据库配置
-    placeholder:
-      en_US: '{"provider":"neo4j","config":{"url":"bolt://localhost:7687","username":"neo4j","password":"..."}}'
-      zh_Hans: '{"provider":"neo4j","config":{"url":"bolt://localhost:7687","username":"neo4j","password":"..."}}'
-    help:
-      en_US: "Optional graph database configuration for relationship storage. Use this field for new installations."
-      zh_Hans: "可选的图数据库配置用于存储关系。新安装请使用此字段。"
-  local_reranker_json_secret:
-    type: secret-input
-    required: false
-    label:
-      en_US: Reranker Configuration
-      zh_Hans: 重排序模型配置
-    placeholder:
-      en_US: '{"provider":"cohere","config":{"model":"rerank-english-v2.0","api_key":"..."}}'
-      zh_Hans: '{"provider":"cohere","config":{"model":"rerank-english-v2.0","api_key":"..."}}'
-    help:
-      en_US: "Optional reranker configuration for search result optimization. Use this field for new installations."
-      zh_Hans: "可选的重排序模型配置用于优化搜索结果。新安装请使用此字段。"
-  heartbeat_interval:
-    type: text-input
-    required: false
-    default: "120"
-    label:
-      en_US: Heartbeat Interval
-      zh_Hans: 心跳间隔
-    help:
-      en_US: "Heartbeat interval in seconds to prevent TCP connection silent timeout for LLM, embedding, and vector store services (default: 120). Must be a positive integer >= 30. If invalid, default value will be used."
-      zh_Hans: "心跳间隔（秒），用于防止 LLM、向量模型和向量数据库的 TCP 连接静默超时（默认值：120）。必须为正整数且 >= 30。如果无效，将使用默认值。"
-  max_concurrent_memory_operations:
-    type: text-input
-    required: false
-    default: "20"
-    label:
-      en_US: Max Concurrent Memory Operations
-      zh_Hans: 最大并发记忆操作数
-    help:
-      en_US: "Maximum concurrent memory operations (default: 20). Must be a positive integer (>= 1). Applies to all operations including search/add/get/get_all/update/delete/delete_all/history."
-      zh_Hans: "记忆操作的最大并发数（默认值：20）。必须为正整数（>= 1），涵盖所有操作包括 search/add/get/get_all/update/delete/delete_all/history。"
-  log_level:
-    type: select
-    required: false
-    default: "INFO"
-    label:
-      en_US: Log Level
-      zh_Hans: 日志级别
-    help:
-      en_US: "Log level for memory operations. Default is INFO. Set to DEBUG for detailed troubleshooting. Can be changed online without redeployment."
-      zh_Hans: "记忆操作的日志级别。默认为 INFO。设置为 DEBUG 可查看详细调试信息。可在线修改无需重新部署。"
-    options:
-      - value: INFO
+    async_mode:
+        type: boolean
+        required: false
+        default: true
         label:
-          en_US: INFO (Default)
-          zh_Hans: INFO (默认)
-      - value: DEBUG
+            en_US: Async Mode
+            zh_Hans: 异步模式
+        help:
+            en_US: "When async mode is enabled, all Mem0 operations run asynchronously and concurrently. Search waits for results; Add does not."
+            zh_Hans: "开启异步模式后，所有Mem0的操作都异步并发执行，Search操作会等待返回结果而Add操作不会。"
+    local_llm_json_secret:
+        type: secret-input
+        required: true
         label:
-          en_US: DEBUG (Detailed)
-          zh_Hans: DEBUG (详细)
-      - value: WARNING
+            en_US: LLM Configuration
+            zh_Hans: LLM 配置
+        placeholder:
+            en_US: '{"provider":"azure_openai","config":{"model":"gpt-4","api_key":"..."}}'
+            zh_Hans: '{"provider":"azure_openai","config":{"model":"gpt-4","api_key":"..."}}'
+        help:
+            en_US: "LLM provider configuration. Supported: azure_openai, openai, anthropic, etc. Use this field for new installations."
+            zh_Hans: "LLM 提供商配置。支持：azure_openai、openai、anthropic 等。新安装请使用此字段。"
+    local_embedder_json_secret:
+        type: secret-input
+        required: true
         label:
-          en_US: WARNING (Warnings Only)
-          zh_Hans: WARNING (仅警告)
-      - value: ERROR
+            en_US: Embedder Configuration
+            zh_Hans: 向量模型配置
+        placeholder:
+            en_US: '{"provider":"azure_openai","config":{"model":"text-embedding-ada-002","api_key":"..."}}'
+            zh_Hans: '{"provider":"azure_openai","config":{"model":"text-embedding-ada-002","api_key":"..."}}'
+        help:
+            en_US: "Embedding model configuration. Supported: azure_openai, openai, huggingface, etc. Use this field for new installations."
+            zh_Hans: "向量模型配置。支持：azure_openai、openai、huggingface 等。新安装请使用此字段。"
+    local_vector_db_json_secret:
+        type: secret-input
+        required: true
         label:
-          en_US: ERROR (Errors Only)
-          zh_Hans: ERROR (仅错误)
-  memory_ttl_days:
-    type: text-input
-    required: false
-    default: ""
-    label:
-      en_US: Memory Max Age (days)
-      zh_Hans: 记忆最长保留天数
-    help:
-      en_US: "Maximum age (in days) for any memory. Memories older than this are force-deleted regardless of recall history. Leave empty to rely solely on the forgetting curve (recommended)."
-      zh_Hans: "记忆的最长保留天数。超过此天数的记忆无论召回记录如何，都强制清理。留空则仅依赖遗忘曲线自动淘汰（推荐）。"
-  checkpoint_ttl_days:
-    type: text-input
-    required: false
-    default: "90"
-    label:
-      en_US: Checkpoint TTL (days)
-      zh_Hans: Checkpoint 保留天数
-    help:
-      en_US: "Maximum age (in days) for an extraction checkpoint before it is deleted by the forget_memories tool. Checkpoints older than this TTL are treated as expired and cleaned up. Default: 90 days."
-      zh_Hans: "提取 Checkpoint 的最大保留天数。超过此 TTL 的 Checkpoint 视为过期，由遗忘记忆工具清理。默认值：90 天。"
+            en_US: Vector Database Configuration
+            zh_Hans: 向量数据库配置
+        placeholder:
+            en_US: '{"provider":"pgvector","config":{"dbname":"mem0","user":"postgres","password":"...","host":"localhost"}}'
+            zh_Hans: '{"provider":"pgvector","config":{"dbname":"mem0","user":"postgres","password":"...","host":"localhost"}}'
+        help:
+            en_US: "Vector database configuration. Supported: pgvector, milvus, qdrant, etc. Use this field for new installations."
+            zh_Hans: "向量数据库配置。支持：pgvector、milvus、qdrant 等。新安装请使用此字段。"
+    local_graph_db_json_secret:
+        type: secret-input
+        required: false
+        label:
+            en_US: Graph Database Configuration
+            zh_Hans: 图数据库配置
+        placeholder:
+            en_US: '{"provider":"neo4j","config":{"url":"bolt://localhost:7687","username":"neo4j","password":"..."}}'
+            zh_Hans: '{"provider":"neo4j","config":{"url":"bolt://localhost:7687","username":"neo4j","password":"..."}}'
+        help:
+            en_US: "[Deprecated in v1.0.0] Graph DB config is ignored — mem0 v2 uses built-in entity linking. Field retained for backward compatibility. Optional graph database configuration for relationship storage. Use this field for new installations."
+            zh_Hans: "[v1.0.0 起弃用] 图数据库配置被忽略 — mem0 v2 使用内置实体链接。字段保留以向后兼容。可选的图数据库配置用于存储关系。新安装请使用此字段。"
+    local_reranker_json_secret:
+        type: secret-input
+        required: false
+        label:
+            en_US: Reranker Configuration
+            zh_Hans: 重排序模型配置
+        placeholder:
+            en_US: '{"provider":"cohere","config":{"model":"rerank-english-v2.0","api_key":"..."}}'
+            zh_Hans: '{"provider":"cohere","config":{"model":"rerank-english-v2.0","api_key":"..."}}'
+        help:
+            en_US: "Optional reranker configuration for search result optimization. Use this field for new installations."
+            zh_Hans: "可选的重排序模型配置用于优化搜索结果。新安装请使用此字段。"
+    heartbeat_interval:
+        type: text-input
+        required: false
+        default: "120"
+        label:
+            en_US: Heartbeat Interval
+            zh_Hans: 心跳间隔
+        help:
+            en_US: "Heartbeat interval in seconds to prevent TCP connection silent timeout for LLM, embedding, and vector store services (default: 120). Must be a positive integer >= 30. If invalid, default value will be used."
+            zh_Hans: "心跳间隔（秒），用于防止 LLM、向量模型和向量数据库的 TCP 连接静默超时（默认值：120）。必须为正整数且 >= 30。如果无效，将使用默认值。"
+    max_concurrent_memory_operations:
+        type: text-input
+        required: false
+        default: "20"
+        label:
+            en_US: Max Concurrent Memory Operations
+            zh_Hans: 最大并发记忆操作数
+        help:
+            en_US: "Maximum concurrent memory operations (default: 20). Must be a positive integer (>= 1). Applies to all operations including search/add/get/get_all/update/delete/delete_all/history."
+            zh_Hans: "记忆操作的最大并发数（默认值：20）。必须为正整数（>= 1），涵盖所有操作包括 search/add/get/get_all/update/delete/delete_all/history。"
+    log_level:
+        type: select
+        required: false
+        default: "INFO"
+        label:
+            en_US: Log Level
+            zh_Hans: 日志级别
+        help:
+            en_US: "Log level for memory operations. Default is INFO. Set to DEBUG for detailed troubleshooting. Can be changed online without redeployment."
+            zh_Hans: "记忆操作的日志级别。默认为 INFO。设置为 DEBUG 可查看详细调试信息。可在线修改无需重新部署。"
+        options:
+            - value: INFO
+              label:
+                  en_US: INFO (Default)
+                  zh_Hans: INFO (默认)
+            - value: DEBUG
+              label:
+                  en_US: DEBUG (Detailed)
+                  zh_Hans: DEBUG (详细)
+            - value: WARNING
+              label:
+                  en_US: WARNING (Warnings Only)
+                  zh_Hans: WARNING (仅警告)
+            - value: ERROR
+              label:
+                  en_US: ERROR (Errors Only)
+                  zh_Hans: ERROR (仅错误)
+    search_score_threshold:
+        type: text-input
+        required: false
+        default: ""
+        label:
+            en_US: Search Score Threshold
+            zh_Hans: 搜索分数阈值
+        help:
+            en_US: "Minimum similarity score (0.0–1.0) for search results. Memories with a score below this threshold are filtered out. Leave empty to return all top-K results regardless of score. Higher values (e.g. 0.6–0.8) return only highly relevant matches; lower values (e.g. 0.2–0.4) are more permissive."
+            zh_Hans: "搜索结果的最低相似度分数（0.0–1.0）。分数低于此阈值的记忆将被过滤。留空表示不使用阈值，按 top-K 返回全部结果。较高值（如 0.6–0.8）仅返回高度相关的匹配；较低值（如 0.2–0.4）则较为宽松。"
+    memory_ttl_days:
+        type: text-input
+        required: false
+        default: ""
+        label:
+            en_US: Memory Max Age (days)
+            zh_Hans: 记忆最长保留天数
+        help:
+            en_US: "Maximum age (in days) for any memory. Memories older than this are force-deleted regardless of recall history. Leave empty to rely solely on the forgetting curve (recommended)."
+            zh_Hans: "记忆的最长保留天数。超过此天数的记忆无论召回记录如何，都强制清理。留空则仅依赖遗忘曲线自动淘汰（推荐）。"
+    checkpoint_ttl_days:
+        type: text-input
+        required: false
+        default: "90"
+        label:
+            en_US: Checkpoint TTL (days)
+            zh_Hans: Checkpoint 保留天数
+        help:
+            en_US: "Maximum age (in days) for an extraction checkpoint before it is deleted by the forget_memories tool. Checkpoints older than this TTL are treated as expired and cleaned up. Default: 90 days."
+            zh_Hans: "提取 Checkpoint 的最大保留天数。超过此 TTL 的 Checkpoint 视为过期，由遗忘记忆工具清理。默认值：90 天。"
 
 tools:
-  - tools/add_memory.yaml
-  - tools/search_memory.yaml
-  - tools/get_all_memories.yaml
-  - tools/get_memory.yaml
-  - tools/update_memory.yaml
-  - tools/delete_memory.yaml
-  - tools/delete_all_memories.yaml
-  - tools/get_memory_history.yaml
-  - tools/extract_long_term_memory.yaml
-  - tools/check_extraction_status.yaml
-  - tools/get_user_checkpoint.yaml
-  - tools/forget_memories.yaml
+    - tools/add_memory.yaml
+    - tools/search_memory.yaml
+    - tools/get_all_memories.yaml
+    - tools/get_memory.yaml
+    - tools/update_memory.yaml
+    - tools/delete_memory.yaml
+    - tools/delete_all_memories.yaml
+    - tools/get_memory_history.yaml
+    - tools/extract_long_term_memory.yaml
+    - tools/check_extraction_status.yaml
+    - tools/get_user_checkpoint.yaml
+    - tools/forget_memories.yaml
 extra:
-  python:
-    source: provider/mem0ai.py
+    python:
+        source: provider/mem0ai.py

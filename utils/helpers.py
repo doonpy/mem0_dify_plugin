@@ -60,6 +60,42 @@ def parse_timeout(
         return default
 
 
+def parse_score_threshold(
+    value: object,
+    default: float | None = None,
+    logger: Logger | None = None,
+    context: str = "score_threshold",
+) -> float | None:
+    """Parse a search score threshold from credentials or tool parameters.
+
+    Accepts empty/None (returns default), numeric, or numeric-string inputs.
+    Valid range is [0.0, 1.0]. Invalid values log a warning and fall back to default.
+    """
+    if value is None or value == "":
+        return default
+    try:
+        parsed = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        if logger:
+            logger.warning(
+                "Invalid %s value: %r, using default: %s",
+                context,
+                value,
+                default,
+            )
+        return default
+    if not 0.0 <= parsed <= 1.0:
+        if logger:
+            logger.warning(
+                "%s out of range [0.0, 1.0]: %s, using default: %s",
+                context,
+                parsed,
+                default,
+            )
+        return default
+    return parsed
+
+
 _DAYS_SINCE_FALLBACK: float = 365 * 10.0  # sentinel for absent/invalid timestamps
 
 

@@ -12,6 +12,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from .logger import get_logger
@@ -199,7 +200,8 @@ class TaskManager:
         filters = self._task_filters(task_id)
 
         try:
-            result = self.mem.get_all(user_id="*", limit=1, filters=filters)
+            merged_filters = {**filters, "user_id": "*"}
+            result = self.mem.get_all(top_k=1, filters=merged_filters)
             items = result.get("results", []) if isinstance(result, dict) else []
 
             if not items:
@@ -297,7 +299,7 @@ class BackgroundTaskExecutor:
     def submit_task(
         cls,
         task_id: str,
-        target_func: callable,
+        target_func: Callable[..., Any],
         *args: Any,
         **kwargs: Any,
     ) -> bool:
@@ -332,9 +334,9 @@ class BackgroundTaskExecutor:
     def _wrapped_task_execution(
         cls,
         task_id: str,
-        target_func: callable,
-        args: tuple,
-        kwargs: dict,
+        target_func: Callable[..., Any],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
     ) -> None:
         """Wrapper for task execution with cleanup."""
         try:

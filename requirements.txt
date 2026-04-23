@@ -1,4 +1,7 @@
-mem0ai>=1.0.2,<=1.0.11
+mem0ai[nlp]>=2.0.0
+fastembed
+# After `pip install -r requirements.txt`, also run:
+#   python -m spacy download en_core_web_sm
 openai
 azure-identity
 langchain-neo4j
@@ -7,3 +10,5 @@ psycopg[binary,pool]  # psycopg3 with connection pool support
 dify_plugin
 tiktoken  # Accurate token counting for conversation processing
 cohere>=6.1.0
+google-genai
+anthropic

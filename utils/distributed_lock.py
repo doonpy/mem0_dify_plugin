@@ -16,15 +16,17 @@ from .helpers import parse_iso_timestamp
 from .logger import get_logger
 
 if TYPE_CHECKING:
+    from mem0 import AsyncMemory
+
     from .mem0_client import Memory
 
 logger = get_logger(__name__)
 
-# Import AsyncMemory for async version
+# Runtime import guard for AsyncMemory (optional at runtime).
 try:
-    from mem0 import AsyncMemory
+    from mem0 import AsyncMemory as _AsyncMemoryRuntime  # noqa: F401
 except ImportError:
-    AsyncMemory = None  # type: ignore
+    _AsyncMemoryRuntime = None  # type: ignore[assignment]
 
 
 @dataclass
@@ -88,7 +90,8 @@ class SyncLockManager:
         filters = self._lock_filters(user_id, app_id)
 
         try:
-            result = self.mem.get_all(user_id=user_id, limit=5, filters=filters)
+            merged_filters = {**filters, "user_id": user_id}
+            result = self.mem.get_all(top_k=5, filters=merged_filters)
             items = result.get("results", []) if isinstance(result, dict) else []
 
             if not items:
@@ -176,10 +179,12 @@ class SyncLockManager:
         # 2. Check if existing lock has expired
         if existing_lock:
             if not existing_lock.is_expired():
+                acquired_dt = parse_iso_timestamp(existing_lock.acquired_at)
                 time_since_acquired = (
-                    datetime.now().astimezone()
-                    - parse_iso_timestamp(existing_lock.acquired_at)
-                ).total_seconds()
+                    (datetime.now().astimezone() - acquired_dt).total_seconds()
+                    if acquired_dt is not None
+                    else 0.0
+                )
                 expires_in = existing_lock.ttl_seconds - time_since_acquired
                 logger.warning(
                     f"Lock already held by {existing_lock.holder_id} "
@@ -334,7 +339,8 @@ class AsyncLockManager:
         filters = self._lock_filters(user_id, app_id)
 
         try:
-            result = await self.mem.get_all(user_id=user_id, limit=5, filters=filters)
+            merged_filters = {**filters, "user_id": user_id}
+            result = await self.mem.get_all(top_k=5, filters=merged_filters)
             items = result.get("results", []) if isinstance(result, dict) else []
 
             if not items:
@@ -422,10 +428,12 @@ class AsyncLockManager:
         # 2. Check if existing lock has expired
         if existing_lock:
             if not existing_lock.is_expired():
+                acquired_dt = parse_iso_timestamp(existing_lock.acquired_at)
                 time_since_acquired = (
-                    datetime.now().astimezone()
-                    - parse_iso_timestamp(existing_lock.acquired_at)
-                ).total_seconds()
+                    (datetime.now().astimezone() - acquired_dt).total_seconds()
+                    if acquired_dt is not None
+                    else 0.0
+                )
                 expires_in = existing_lock.ttl_seconds - time_since_acquired
                 logger.warning(
                     f"Lock already held by {existing_lock.holder_id} "

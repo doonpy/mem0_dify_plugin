@@ -1,5 +1,20 @@
 # Mem0 Dify Plugin - Changelog
 
+## Version 1.0.0 (2026-04-22)
+
+### 💥 Breaking: mem0ai SDK v2.0.0 upgrade
+- **SDK pin**: `mem0ai` bumped from `1.0.x` to `2.0.0`. mem0 v2 introduces single-pass extraction, hybrid retrieval (semantic + BM25 + entity graph), and stricter API validation.
+- **`search()` / `get_all()` shape**: entity IDs (`user_id`/`agent_id`/`run_id`) now go inside the `filters` dict; `limit` renamed to `top_k`. The plugin wrapper's external payload interface is unchanged — only internal forwarding changed.
+- **Prompts consolidated**: `custom_fact_extraction_prompt` and `custom_update_memory_prompt` were removed in mem0 v2. The plugin now emits a single combined `custom_instructions` string per subtype.
+- **Graph store removed**: mem0 v2 replaces external graph DBs (Neo4j) with built-in entity linking. `local_graph_db_json_secret` is retained for backward compatibility but silently ignored with a one-time WARNING; marked deprecated in the field help text.
+
+### Migration notes
+- No data migration required — vector-store payload fields are unchanged across v1→v2.
+- Users who configured `local_graph_db_json_secret` will see a one-time WARNING on startup; entity linking now runs automatically inside mem0.
+- BM25 hybrid retrieval uses spaCy lemmatization via the bundled `mem0ai[nlp]` extra; the `en_core_web_sm` spaCy model is auto-downloaded by mem0 on first use.
+
+---
+
 ## Version 0.3.0 (2026-04-22)
 
 ### 🛠️ Reliability & Compatibility
