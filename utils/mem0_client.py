@@ -1174,23 +1174,22 @@ class AsyncMem0Client:
         # Build kwargs with all provided parameters
         kwargs: dict[str, Any] = {}
 
-        # Add entity IDs if provided
+        # v2: entity IDs must be passed inside the filters dict, not as top-level kwargs
+        filters = params.get("filters")
+        merged_filters: dict[str, Any] = dict(filters) if isinstance(filters, dict) else {}
         if params.get("user_id"):
-            kwargs["user_id"] = params.get("user_id")
+            merged_filters["user_id"] = params.get("user_id")
         if params.get("agent_id"):
-            kwargs["agent_id"] = params.get("agent_id")
+            merged_filters["agent_id"] = params.get("agent_id")
         if params.get("run_id"):
-            kwargs["run_id"] = params.get("run_id")
+            merged_filters["run_id"] = params.get("run_id")
+        kwargs["filters"] = merged_filters
 
         # Add optional parameters
         limit = params.get("limit")
         if limit is not None:
             with contextlib.suppress(TypeError, ValueError):
                 kwargs["limit"] = int(limit)
-
-        filters = params.get("filters")
-        if isinstance(filters, dict):
-            kwargs["filters"] = filters
 
         timeout = self._get_operation_timeout_s(
             timeout_s=timeout_s,
